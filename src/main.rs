@@ -1,11 +1,9 @@
 
-// mod server;
 use zbus::Connection;
 use zbus::Proxy;
 use futures_util::stream::StreamExt;
-use serde_json::json;
 use tdlib::{
-    enums::{AuthorizationState, Update, User},
+    enums::{AuthorizationState, Update},
     functions,
 };
 use tokio::sync::mpsc::{self, Receiver, Sender};
@@ -27,7 +25,6 @@ fn ask_user(prompt: &str) -> String {
 }
 
 async fn handle_update(update: Update, auth_tx: &Sender<AuthorizationState>) {
-    // println!("Received update: {:?}", update);
     if let Update::AuthorizationState(update) = update {
         auth_tx.send(update.authorization_state).await.unwrap();
     }
@@ -135,7 +132,6 @@ async fn main() -> zbus::Result<()> {
     let run_flag = Arc::new(AtomicBool::new(true));
     let run_flag_clone = run_flag.clone();
 
-    // Фоновая задача для получения обновлений TDLib
     tokio::spawn(async move {
         while run_flag_clone.load(Ordering::Acquire) {
             if let Some((update, _)) = tdlib::receive() {
@@ -146,7 +142,7 @@ async fn main() -> zbus::Result<()> {
 
     functions::set_log_verbosity_level(2, client_id).await.unwrap();
     println!("set_log_verbosity_level");
-    let _ = handle_authorization_state(client_id, auth_rx, run_flag.clone()).await;;
+    let _ = handle_authorization_state(client_id, auth_rx, run_flag.clone()).await;
     println!("Create tg client");
     let conn = Connection::session().await?;
 
@@ -185,8 +181,71 @@ async fn main() -> zbus::Result<()> {
                 let body = signal.body();
                 match body.deserialize::<(String,)>() {
                     Ok((name,)) => {
+                        let lower_name = name.to_lowercase();
+
+                    let apps = vec![
+                        // Браузеры
+                        ("chrome", "🌐"), ("google chrome", "🌐"), ("firefox", "🦊"),
+                        ("edge", "🧱"), ("opera", "🔴"), ("safari", "🧭"),
+
+                        // IDE / редакторы
+                        ("code", "💻"), ("visual studio code", "💻"), ("intellij", "🚀"),
+                        ("pycharm", "🐍"), ("webstorm", "🌐"), ("android studio", "📱"),
+                        ("notepad", "📝"), ("sublime text", "✍️"), ("atom", "⚛️"),
+
+                        // Мессенджеры / соцсети
+                        ("telegram", "📱"), ("whatsapp", "💬"), ("discord", "💬"),
+                        ("slack", "📨"), ("teams", "👥"), ("zoom", "🎥"),
+                        ("skype", "📞"), ("signal", "🔒"), ("messenger", "💌"), ("line", "💬"),
+
+                        // Музыка / видео
+                        ("spotify", "🎵"), ("itunes", "🎶"), ("apple music", "🎶"),
+                        ("vlc", "🎬"), ("youtube", "▶️"), ("netflix", "📺"),
+                        ("twitch", "🎮"), ("prime video", "📺"), ("hulu", "📺"), ("soundcloud", "🎧"),
+
+                        // Графика / дизайн
+                        ("photoshop", "🖌️"), ("illustrator", "🎨"), ("figma", "📐"),
+                        ("blender", "🧊"), ("gimp", "🖼️"), ("after effects", "✨"),
+                        ("premiere pro", "🎞️"), ("inkscape", "✏️"), ("canva", "🖍️"),
+                        ("corel draw", "🖊️"), ("sketch", "📏"), ("autocad", "📐"),
+
+                        // Офис / работа
+                        ("word", "📄"), ("excel", "📊"), ("powerpoint", "📈"),
+                        ("onenote", "🗒️"), ("outlook", "📧"), ("notion", "📚"),
+                        ("todoist", "✅"), ("evernote", "📝"), ("slack", "📨"),
+
+                        // Системные утилиты
+                        ("terminal", "💻"), ("cmd", "💻"), ("powershell", "💻"),
+                        ("task manager", "📋"), ("explorer", "📂"), ("finder", "📂"),
+                        ("docker", "🐳"), ("vagrant", "📦"), ("git", "🐙"), ("gitlab", "🦊"),
+                        ("bitbucket", "🗂️"), ("bash", "💻"),
+
+                        // Игры
+                        ("minecraft", "🟫"), ("fortnite", "🕹️"), ("league of legends", "⚔️"),
+                        ("lol", "⚔️"), ("valorant", "🔫"), ("cs:go", "🔫"),
+                        ("dota 2", "🔥"), ("steam", "🎮"), ("overwatch", "🛡️"), ("apex", "🔫"),
+                        ("pubg", "🔫"), ("wow", "⚔️"), ("roblox", "🎮"), ("cs2", "🔫"),
+
+                        // Браузерные / веб сервисы
+                        ("jira", "📌"), ("confluence", "📖"), ("github", "🐙"),
+                        ("google drive", "📂"), ("dropbox", "📦"), ("notion", "📚"),
+
+                        // Другие популярные приложения
+                        ("photos", "🖼️"), ("google photos", "🖼️"), ("calendar", "📅"),
+                        ("google calendar", "📅"), ("todo", "✅"), ("reminders", "⏰"),
+                        ("weather", "☀️"), ("calculator", "🧮"), ("zoom", "🎥"),
+                        ("teams", "👥"), ("spotify", "🎵"), ("vlc", "🎬"), ("notepad", "📝"),
+                        ("terminal", "💻"), ("cmd", "💻"), ("powershell", "💻"),
+                    ];
+
+                        let emoji = apps
+                            .iter()
+                            .find(|(key, _)| lower_name.contains(key))
+                            .map(|(_, emoji)| *emoji)
+                            .unwrap_or("🖥️"); // по умолчанию
+
                         println!("Active window changed: {}", name);
-                        let bio_text = format!("Currently using: {}", name);
+                        let bio_text = format!("Currently using: {} {}", name, emoji);
                         if let Err(e) = functions::set_bio(bio_text, client_id).await {
                             eprintln!("Failed to update bio: {}", e.message);
                         }
