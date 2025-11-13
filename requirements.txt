@@ -1,0 +1,2 @@
+1. tdlib
+2. tdlib-devel
